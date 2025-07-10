@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FlightSelection from '@/components/flight-selection';
 import SeatMap from '@/components/seat-map';
 import BookingSummary from '@/components/booking-summary';
 import Confirmation from '@/components/confirmation';
 import type { Flight, Seat } from '@/lib/types';
 import { useStore } from '@/lib/store';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Step = 'flights' | 'seats' | 'summary' | 'confirmed';
 
@@ -16,6 +17,11 @@ export default function Home() {
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
   
   const { flights, updateSeatStatus, revertSeatStatus } = useStore();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleFlightSelect = (flight: Flight) => {
     setSelectedFlight(flight);
@@ -30,7 +36,10 @@ export default function Home() {
   const handleBookingConfirm = (passengerName: string) => {
     if (selectedFlight && selectedSeat) {
       updateSeatStatus(selectedFlight.id, selectedSeat.id, 'taken', passengerName);
-      setSelectedSeat({ ...selectedSeat, passengerName });
+      // We need to find the latest state of the seat for the confirmation page
+      const updatedFlight = flights.find(f => f.id === selectedFlight.id);
+      const confirmedSeat = updatedFlight?.seats.find(s => s.id === selectedSeat.id);
+      setSelectedSeat(confirmedSeat || null);
       setStep('confirmed');
     }
   };
@@ -38,7 +47,11 @@ export default function Home() {
   const handleGoBack = () => {
     if (step === 'summary') {
       if (selectedFlight && selectedSeat) {
-        revertSeatStatus(selectedFlight.id, selectedSeat.id);
+        // Revert status only if it was 'selected', not if it was already 'taken'
+        const currentSeatState = flights.find(f=>f.id === selectedFlight.id)?.seats.find(s=>s.id === selectedSeat.id);
+        if(currentSeatState?.status === 'selected') {
+          revertSeatStatus(selectedFlight.id, selectedSeat.id);
+        }
       }
       setSelectedSeat(null);
       setStep('seats');
@@ -56,6 +69,18 @@ export default function Home() {
   }
 
   const renderStep = () => {
+    if (!isClient) {
+      return (
+        <div className="space-y-6">
+          <Skeleton className="h-10 w-1/3 mx-auto" />
+          <div className="space-y-4">
+             <Skeleton className="h-48 w-full" />
+             <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      )
+    }
+
     switch(step) {
       case 'flights':
         return <FlightSelection flights={flights} onFlightSelect={handleFlightSelect} />;
