@@ -3,7 +3,7 @@ import threading
 class VuelosData:
     def __init__(self):
         self.vuelos = {
-            "VUELO_404": {
+            "vuelo_123": {
                 "asientos": {
                     "A1": None, "A2": None, "A3": None, "A4":None,
                     "B1": None, "B2": None, "B3": None, "B4":None,
@@ -11,7 +11,7 @@ class VuelosData:
                     "D1": None, "D2": None, "D3": None, "D4":None
                 }
             },
-            "VUELO_456": { # Nuevo vuelo
+            "vuelo_456": { # Nuevo vuelo
                 "asientos": {
                     "1A": None, "1B": None, 
                     "2A": None, "2B": None,
