@@ -14,8 +14,9 @@ interface FlightState {
 // Asegúrate de que esta función adaptFlightsData coincida con la estructura de Flight[]
 const adaptFlightsData = (data: any): Flight[] => {
   const staticFlightDetails: { [key: string]: Partial<Flight> } = {
-      "vuelo_123": { from: 'New York (JFK)', to: 'London (LHR)', departureTime: '2024-10-28T08:00:00Z', arrivalTime: '2024-10-28T20:00:00Z', price: 750, plane: { rows: 2, seatsPerRow: 3 } },
-  };
+      "LONDON": { from: 'New York (JFK)', to: 'London (LHR)', departureTime: '2024-10-28T08:00:00Z', arrivalTime: '2024-10-28T20:00:00Z', price: 750, plane: { rows: 2, seatsPerRow: 3 } },
+      "PARIS": { from: 'London (LHR)', to: 'Paris (CDG)', departureTime: '2024-10-29T10:00:00Z', arrivalTime: '2024-10-29T12:00:00Z', price: 150, plane: { rows: 4, seatsPerRow: 2 } }, // Detalles para vuelo_456
+    };
 
   return Object.entries(data).map(([flightId, flightData]: [string, any]) => {
     const seats: Seat[] = Object.entries(flightData.asientos).map(([seatId, passengerName]) => ({
