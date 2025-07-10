@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Flight, Seat } from './types';
+import type { Flight, Seat } from './types'; // Importamos los tipos
 
 interface FlightState {
   flights: Flight[];
@@ -7,31 +7,27 @@ interface FlightState {
   error: string | null;
   fetchFlights: () => Promise<void>;
   bookSeat: (flightId: string, seatId: string, passengerName: string) => Promise<boolean>;
-  // Opcional: Añadir funciones para cancelar y reiniciar si la UI lo permite
-  // cancelBooking: (flightId: string, seatId: string) => Promise<boolean>;
-  // resetAllSeats: () => Promise<boolean>;
+  cancelBooking: (flightId: string, seatId: string) => Promise<boolean>;
+  resetAllSeats: () => Promise<boolean>;
 }
 
-// Adapta la estructura de datos del backend a la que espera el frontend.
-// La estructura esperada del backend para /api/vuelos es como:
-// { "vuelo_123": { "asientos": { "A1": "Nombre", "A2": null, ... } } }
+// Asegúrate de que esta función adaptFlightsData coincida con la estructura de Flight[]
 const adaptFlightsData = (data: any): Flight[] => {
-  // Usamos datos estáticos para la información del vuelo (origen, destino, precio, etc.)
-  // Puedes expandir tu backend para que también proporcione estos detalles por vuelo.
   const staticFlightDetails: { [key: string]: Partial<Flight> } = {
       "vuelo_123": { from: 'New York (JFK)', to: 'London (LHR)', departureTime: '2024-10-28T08:00:00Z', arrivalTime: '2024-10-28T20:00:00Z', price: 750, plane: { rows: 2, seatsPerRow: 3 } },
-      // Añade más detalles si tu backend tiene más vuelos en el futuro
   };
 
   return Object.entries(data).map(([flightId, flightData]: [string, any]) => {
-    const seats = Object.entries(flightData.asientos).map(([seatId, passengerName]) => ({
+    const seats: Seat[] = Object.entries(flightData.asientos).map(([seatId, passengerName]) => ({
       id: seatId,
+      // Asegúrate de que 'available' y 'taken' coincidan con los literales de cadena en tu tipo Seat
       status: passengerName ? 'taken' : 'available',
       passengerName: passengerName as string | undefined,
     }));
 
     const details = staticFlightDetails[flightId] || {};
 
+    // Asegúrate de que la estructura del objeto retornado coincida exactamente con la interfaz Flight
     return {
       id: flightId,
       from: details.from || 'Unknown Origin',
@@ -40,30 +36,29 @@ const adaptFlightsData = (data: any): Flight[] => {
       arrivalTime: details.arrivalTime || new Date().toISOString(),
       price: details.price || 0,
       plane: {
-          rows: details.plane?.rows || 1, // Asegúrate de que tu UI pueda manejar diferentes configuraciones de filas/asientos
+          rows: details.plane?.rows || 1,
           seatsPerRow: details.plane?.seatsPerRow || 6,
       },
-      seats,
+      seats, // Asegúrate de que esto sea el array de objetos Seat
     };
   });
 };
 
-// *** CAMBIO CLAVE: Definir la URL del backend usando la variable de entorno ***
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'; // Fallback para desarrollo local
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
 
 export const useStore = create<FlightState>()((set, get) => ({
+  // Estado inicial
   flights: [],
   isLoading: true,
   error: null,
 
+  // Definiciones ÚNICAS y completas de las funciones
   fetchFlights: async () => {
     set({ isLoading: true, error: null });
     try {
-      // *** CAMBIO: Usamos la variable de entorno para la URL del backend ***
       const response = await fetch(`${BACKEND_URL}/api/vuelos`);
       if (!response.ok) {
-        // Intenta leer un mensaje de error del cuerpo si está disponible
         const errorBody = await response.text();
         throw new Error(`Failed to fetch flights: ${response.status} ${response.statusText} - ${errorBody}`);
       }
@@ -78,16 +73,13 @@ export const useStore = create<FlightState>()((set, get) => ({
   },
 
   bookSeat: async (flightId, seatId, passengerName) => {
-    set({ error: null }); // Limpiar errores anteriores antes de intentar reservar
+    set({ error: null });
     try {
-      // Tu backend espera datos de formulario o JSON.
-      // Mantendremos form-data ya que es lo que el código original usaba.
       const body = new URLSearchParams();
       body.append('vuelo', flightId);
       body.append('asiento', seatId);
       body.append('nombre', passengerName);
 
-      // *** CAMBIO: Usamos la variable de entorno para la URL del backend ***
       const response = await fetch(`${BACKEND_URL}/api/reservar`, {
         method: 'POST',
         headers: {
@@ -96,14 +88,12 @@ export const useStore = create<FlightState>()((set, get) => ({
         body: body.toString(),
       });
 
-      const result = await response.json(); // Esperamos un JSON de respuesta
+      const result = await response.json();
 
       if (!response.ok || result.status === 'error') {
-        // *** MEJORA: Leer el mensaje de error del JSON de respuesta ***
         throw new Error(result.mensaje || 'Booking failed');
       }
 
-      // Después de una reserva exitosa, actualizamos los datos llamando a fetchFlights
       await get().fetchFlights();
       return true;
 
@@ -111,14 +101,63 @@ export const useStore = create<FlightState>()((set, get) => ({
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during booking';
       console.error("Booking error:", errorMessage);
       set({ error: errorMessage });
-      // Propagar el error para que el componente que llama pueda manejarlo si es necesario
-      // throw new Error(errorMessage); // Podrías lanzar el error si quieres que el componente lo capture
-      return false; // Retornar false para indicar que la reserva falló
+      return false;
     }
   },
 
-  // Puedes añadir funciones similares para cancelar y reiniciar si la UI las necesita
-  // cancelBooking: async (flightId, seatId) => { /* ... */ },
-  // resetAllSeats: async () => { /* ... */ },
+  cancelBooking: async (flightId, seatId) => {
+      set({ error: null });
+      try {
+          const body = new URLSearchParams();
+          body.append('vuelo', flightId);
+          body.append('asiento', seatId);
 
+          const response = await fetch(`${BACKEND_URL}/api/eliminar`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: body.toString(),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status === 'error') {
+              throw new Error(result.mensaje || 'Cancellation failed');
+          }
+
+          await get().fetchFlights();
+          return true;
+
+      } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during cancellation';
+          console.error("Cancellation error:", errorMessage);
+          set({ error: errorMessage });
+          return false;
+      }
+  },
+
+  resetAllSeats: async () => {
+      set({ error: null });
+      try {
+          const response = await fetch(`${BACKEND_URL}/api/reiniciar`, {
+              method: 'POST',
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status === 'error') {
+               throw new Error(result.mensaje || 'Reset failed');
+          }
+
+          await get().fetchFlights();
+          return true;
+
+      } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during reset';
+          console.error("Reset error:", errorMessage);
+          set({ error: errorMessage });
+          return false;
+      }
+  }
 }));
