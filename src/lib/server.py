@@ -72,7 +72,7 @@ def eliminar_reserva():
          return jsonify({"status": "error", "mensaje": "Faltan datos (vuelo, asiento)"}), 400
 
     if datos.cancelar(vuelo, asiento):
-        return jsonify({"status": "ok", "mensaje": f"Reserva para asiento {asiento} en vuelo {vuelo} eliminada"})\
+        return jsonify({"status": "ok", "mensaje": f"Reserva para asiento {asiento} en vuelo {vuelo} eliminada"})
     else:
         return jsonify({"status": "error", "mensaje": f"No se encontró reserva para asiento {asiento} en vuelo {vuelo}"}), 400
 
