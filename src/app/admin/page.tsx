@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-// *** Importamos las nuevas funciones del store ***
 import { useStore } from '@/lib/store';
 import type { Flight } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// *** Importamos el icono de Basura para eliminar ***
 import { Armchair, User, XCircle, RefreshCw, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -17,23 +15,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast'; // Para mostrar notificaciones
+import { useToast } from '@/hooks/use-toast';
 
-// *** Componente AdminSeatMap modificado para eliminar reservas ***
 const AdminSeatMap = ({ flight }: { flight: Flight }) => {
-  // *** Obtenemos la función cancelBooking del store ***
-  const { cancelBooking, isLoading: isBookingActionLoading } = useStore(state => ({
+  // Obtener funciones y estado necesarios del store
+  // Corregimos la desestructuración aquí
+  const { cancelBooking, isLoading } = useStore(state => ({
     cancelBooking: state.cancelBooking,
-    // Aquí podríamos añadir otros estados de carga si los tuviéramos definidos en el store para acciones específicas
-    // Por ahora, usaremos isLoading general para deshabilitar botones si se está cargando algo
-    isLoading: state.isLoading,
-    // Sin embargo, para acciones de administración, podríamos necesitar un estado de carga específico
-    // Vamos a crear un estado local para controlar el estado de carga de las acciones individuales de asientos
-    // Esto es un ejemplo, en una app más grande, podrías querer un manejo de estado más sofisticado
-    isBookingActionLoading: state.isLoading // Usamos el estado general isLoading por simplicidad
+    isLoading: state.isLoading // Usamos el estado general isLoading del store
   }));
-   const { toast } = useToast(); // Para mostrar notificaciones
-
+  const { toast } = useToast();
 
   const seatRows = [];
   for (let i = 0; i < flight.seats.length; i += flight.plane.seatsPerRow) {
@@ -45,12 +36,8 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
   const takenSeats = flight.seats.filter(s => s.status === 'taken').length;
   const availableSeats = totalSeats - takenSeats;
 
-  // *** Función para manejar la eliminación de una reserva ***
   const handleCancelBooking = async (seatId: string) => {
-      // Podríamos añadir una confirmación al usuario aquí (ej: un AlertDialog)
       if (window.confirm(`Are you sure you want to cancel the booking for seat ${seatId} on flight ${flight.id}?`)) {
-         // Aquí podríamos necesitar un estado de carga local para el asiento específico que se está cancelando
-         // Para simplificar, nos basaremos en el refresco general de datos
         const success = await cancelBooking(flight.id, seatId);
         if (success) {
             toast({
@@ -62,7 +49,6 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
           }
       }
   };
-
 
   return (
     <Card>
@@ -81,7 +67,7 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
                 <span className="w-6 text-center font-mono text-muted-foreground text-xs">{rowIndex + 1}</span>
                 <div className="flex gap-1.5">
                   {row.map((seat, seatIndex) => (
-                    <div key={seat.id} className="flex items-center"> {/* Añadimos items-center para alinear */}
+                    <div key={seat.id} className="flex items-center">
                       {seatIndex === aisleIndex && <div className="w-6" aria-hidden="true"></div>}
                        <Tooltip>
                         <TooltipTrigger asChild>
@@ -90,10 +76,9 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
                             className={cn(
                               "w-7 h-7 rounded-md flex items-center justify-center",
                               seat.status === 'available' && "bg-primary/20 text-primary",
-                              seat.status === 'taken' && "bg-muted text-muted-foreground cursor-pointer", // Hacemos el cursor pointer para asientos ocupados
+                              seat.status === 'taken' && "bg-muted text-muted-foreground cursor-pointer",
                             )}
-                             // Permite clic solo si el asiento está ocupado y no hay acción global en curso
-                            onClick={() => seat.status === 'taken' && !isBookingActionLoading && handleCancelBooking(seat.id)}
+                            onClick={() => seat.status === 'taken' && !isLoading && handleCancelBooking(seat.id)}
                           >
                             <Armchair size={16} />
                           </div>
@@ -104,14 +89,13 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
                           </TooltipContent>
                         )}
                       </Tooltip>
-                       {/* *** Botón para eliminar si el asiento está tomado *** */}
                        {seat.status === 'taken' && (
                            <Button
                                variant="ghost"
                                size="icon"
                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
                                onClick={() => handleCancelBooking(seat.id)}
-                               disabled={isBookingActionLoading} // Deshabilitar durante la acción
+                               disabled={isLoading}
                            >
                                <Trash2 size={14} />
                            </Button>
@@ -130,11 +114,11 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
 };
 
 
-// *** Página de Administración modificada para el botón de Reinicio ***
 export default function AdminPage() {
-  // *** Obtenemos todas las funciones y estado necesarios del store ***
-  const { flights, isLoading, fetchFlights, resetAllSeats, error } = useStore();
-  const { toast } = useToast(); // Para mostrar notificaciones
+  // Obtener todas las funciones y estado necesarios del store
+  const { flights, isLoading, fetchFlights, resetAllSeats, error } = useStore(); // Esta línea debería estar bien
+
+  const { toast } = useToast();
 
   // Efecto para mostrar errores del store
   useEffect(() => {
@@ -150,17 +134,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchFlights();
-    // Mantenemos el refresco automático para la vista de administración
     const interval = setInterval(() => {
       fetchFlights();
     }, 5000); // Refresh every 5 seconds
 
-    return () => clearInterval(interval); // Cleanup on component unmount
+    return () => clearInterval(interval);
   }, [fetchFlights]);
 
-  // *** Función para manejar el reinicio de todas las reservas ***
   const handleResetAllSeats = async () => {
-      // Podríamos añadir una confirmación al usuario aquí (ej: un AlertDialog)
       if (window.confirm("Are you sure you want to reset all seat bookings? This action cannot be undone.")) {
           const success = await resetAllSeats();
            if (success) {
@@ -184,17 +165,18 @@ export default function AdminPage() {
                 <p className="text-muted-foreground mt-2 text-lg">Seat status is refreshed automatically</p>
             </div>
             <div className="flex items-center gap-4">
-                 {/* *** Botón para Reiniciar Todas las Reservas *** */}
+                {/* Botón para Reiniciar Todas las Reservas */}
                 <Button
                     onClick={handleResetAllSeats}
-                    variant="destructive" // Usamos variante destructiva para indicar acción de borrado
-                    disabled={isLoading} // Deshabilitar durante cualquier carga del store
+                    variant="destructive"
+                    disabled={isLoading}
                 >
-                    <Trash2 className={cn("h-4 w-4 mr-2", isLoading && "animate-pulse")} /> {/* Usamos Trash2 para resetear */}
+                    <Trash2 className={cn("h-4 w-4 mr-2", isLoading && "animate-pulse")} />
                     Reset All Seats
                 </Button>
                 <Button onClick={() => fetchFlights()} variant="outline" size="icon" disabled={isLoading}>
-                    <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin\")} />
+                    {/* CORRECCIÓN: Eliminado el carácter de escape \ */}
+                    <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                 </Button>
                 <Button asChild>
                     <Link href="/">Go to Booking Page</Link>
@@ -203,7 +185,6 @@ export default function AdminPage() {
         </div>
         <div className="flex flex-wrap gap-4 mt-6 justify-start">
             <div className="flex items-center gap-2 text-sm"><Armchair size={16} className="text-primary/80"/> Available</div>
-             {/* Actualizamos la leyenda para incluir la opción de eliminar */}
             <div className="flex items-center gap-2 text-sm"><Armchair size={16} className="text-muted-foreground"/> Taken (<Trash2 size={14} className="inline-block align-text-bottom"/> to Cancel)</div>
             <div className="flex items-center gap-2 text-sm"><User size={16} className="text-muted-foreground"/> Hover for passenger</div>
         </div>
@@ -217,8 +198,6 @@ export default function AdminPage() {
            </div>
         ) : (
           flights.length > 0 ? (
-            // Pasamos las funciones del store al componente AdminSeatMap si las necesita para acciones a nivel de asiento
-            // En este caso, cancelBooking se llama dentro de AdminSeatMap, por lo que no necesita pasarse como prop si se obtiene directamente allí
             flights.map(flight => <AdminSeatMap key={flight.id} flight={flight} />)
           ) : (
             <p className="text-center text-muted-foreground">No flights found.</p>
@@ -228,3 +207,4 @@ export default function AdminPage() {
     </main>
   );
 }
+
