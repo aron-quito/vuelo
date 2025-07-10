@@ -1,7 +1,6 @@
 "use client"
 
-import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import type { Flight, Seat } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,59 +11,51 @@ interface SeatMapProps {
   flight: Flight;
   onSeatSelect: (seat: Seat) => void;
   onGoBack: () => void;
+  setAllFlights: React.Dispatch<React.SetStateAction<Flight[]>>;
 }
 
-const generateSeats = (rows: number, seatsPerRow: number): Seat[] => {
-  const seats: Seat[] = [];
-  const seatLetters = 'ABCDEF';
-  for (let row = 1; row <= rows; row++) {
-    for (let i = 0; i < seatsPerRow; i++) {
-      // Simulate some seats being already taken
-      const isTaken = Math.random() > 0.7;
-      seats.push({
-        id: `${row}${seatLetters[i]}`,
-        status: isTaken ? 'taken' : 'available',
-      });
-    }
-  }
-  return seats;
-};
-
-export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps) {
-  const [seats, setSeats] = useState<Seat[]>([]);
-  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
-
-  useEffect(() => {
-    // Generate seats only on the client-side to avoid hydration mismatches
-    setSeats(generateSeats(flight.plane.rows, flight.plane.seatsPerRow));
-  }, [flight]);
+export default function SeatMap({ flight, onSeatSelect, onGoBack, setAllFlights }: SeatMapProps) {
+  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status === 'taken') return;
 
-    const newSelectedSeat = selectedSeat?.id === seat.id ? null : seat;
-    setSelectedSeat(newSelectedSeat);
+    const newSelectedSeatId = selectedSeatId === seat.id ? null : seat.id;
     
-    setSeats(currentSeats => currentSeats.map(s => {
-      if (s.id === seat.id) {
-        return { ...s, status: newSelectedSeat ? 'selected' : 'available' };
-      }
-      if (s.id === selectedSeat?.id) {
-        return { ...s, status: 'available' }; // Deselect old seat
-      }
-      return s;
-    }));
+    // Update the local seat status for immediate visual feedback
+    setAllFlights(currentFlights =>
+      currentFlights.map(f => {
+        if (f.id === flight.id) {
+          const updatedSeats = f.seats.map(s => {
+            // Deselect old seat
+            if (s.id === selectedSeatId && s.status === 'selected') {
+              return { ...s, status: 'available' };
+            }
+            // Select new seat
+            if (s.id === seat.id) {
+              return { ...s, status: newSelectedSeatId ? 'selected' : 'available' };
+            }
+            return s;
+          });
+          return { ...f, seats: updatedSeats };
+        }
+        return f;
+      })
+    );
+    
+    setSelectedSeatId(newSelectedSeatId);
   };
 
   const seatRows = useMemo(() => {
     const rows = [];
-    for (let i = 0; i < seats.length; i += flight.plane.seatsPerRow) {
-      rows.push(seats.slice(i, i + flight.plane.seatsPerRow));
+    for (let i = 0; i < flight.seats.length; i += flight.plane.seatsPerRow) {
+      rows.push(flight.seats.slice(i, i + flight.plane.seatsPerRow));
     }
     return rows;
-  }, [seats, flight.plane.seatsPerRow]);
+  }, [flight.seats, flight.plane.seatsPerRow]);
 
   const aisleIndex = Math.ceil(flight.plane.seatsPerRow / 2);
+  const finalSelectedSeat = flight.seats.find(s => s.id === selectedSeatId);
 
   return (
     <Card className="w-full animate-fade-in">
@@ -116,8 +107,8 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
 
       </CardContent>
       <CardFooter className="flex justify-end">
-        <Button onClick={() => onSeatSelect(selectedSeat!)} disabled={!selectedSeat}>
-          Confirm Seat {selectedSeat?.id}
+        <Button onClick={() => onSeatSelect(finalSelectedSeat!)} disabled={!finalSelectedSeat}>
+          Confirm Seat {finalSelectedSeat?.id}
         </Button>
       </CardFooter>
     </Card>

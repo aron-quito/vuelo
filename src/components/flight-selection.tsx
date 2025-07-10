@@ -6,19 +6,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { PlaneTakeoff, Clock, Landmark, DollarSign } from "lucide-react";
 
-const mockFlights: Flight[] = [
-  { id: 'KT123', from: 'New York (JFK)', to: 'London (LHR)', departureTime: '2024-10-28 08:00', arrivalTime: '2024-10-28 20:00', price: 750, plane: { rows: 15, seatsPerRow: 6 } },
-  { id: 'KT456', from: 'Paris (CDG)', to: 'Tokyo (HND)', departureTime: '2024-10-29 14:30', arrivalTime: '2024-10-30 09:00', price: 1200, plane: { rows: 20, seatsPerRow: 6 } },
-  { id: 'KT789', from: 'Sydney (SYD)', to: 'Los Angeles (LAX)', departureTime: '2024-11-01 22:00', arrivalTime: '2024-11-01 17:00', price: 980, plane: { rows: 18, seatsPerRow: 6 } },
-];
-
-interface FlightSelectionProps {
+interface FlightCardProps {
+  flight: Flight;
   onFlightSelect: (flight: Flight) => void;
+  isBooked: boolean;
 }
 
-const FlightCard = ({ flight, onFlightSelect }: { flight: Flight, onFlightSelect: (flight: Flight) => void }) => {
-  const [departure, setDeparture] = useState(flight.departureTime);
-  const [arrival, setArrival] = useState(flight.arrivalTime);
+const FlightCard = ({ flight, onFlightSelect, isBooked }: FlightCardProps) => {
+  const [departure, setDeparture] = useState('');
+  const [arrival, setArrival] = useState('');
 
   useEffect(() => {
     setDeparture(new Date(flight.departureTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
@@ -26,7 +22,7 @@ const FlightCard = ({ flight, onFlightSelect }: { flight: Flight, onFlightSelect
   }, [flight.departureTime, flight.arrivalTime]);
 
   return (
-    <Card className="transition-all hover:shadow-lg hover:shadow-primary/20">
+    <Card className={`transition-all ${isBooked ? 'opacity-50' : 'hover:shadow-lg hover:shadow-primary/20'}`}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center justify-between gap-4">
           <span className="flex items-center gap-2">
@@ -70,21 +66,36 @@ const FlightCard = ({ flight, onFlightSelect }: { flight: Flight, onFlightSelect
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={() => onFlightSelect(flight)} className="w-full">
-          Select Seats
+        <Button onClick={() => onFlightSelect(flight)} className="w-full" disabled={isBooked}>
+          {isBooked ? 'Already Booked' : 'Select Seats'}
         </Button>
       </CardFooter>
     </Card>
   )
 }
 
-export default function FlightSelection({ onFlightSelect }: FlightSelectionProps) {
+interface FlightSelectionProps {
+  flights: Flight[];
+  onFlightSelect: (flight: Flight) => void;
+  userBookings: Record<string, string>;
+}
+
+export default function FlightSelection({ flights, onFlightSelect, userBookings }: FlightSelectionProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-3xl font-bold text-center text-primary/80">Select Your Flight</h2>
-      {mockFlights.map((flight) => (
-        <FlightCard key={flight.id} flight={flight} onFlightSelect={onFlightSelect} />
-      ))}
+      {flights.length === 0 ? (
+        <p className="text-center text-muted-foreground">Loading flights...</p>
+      ) : (
+        flights.map((flight) => (
+          <FlightCard 
+            key={flight.id} 
+            flight={flight} 
+            onFlightSelect={onFlightSelect}
+            isBooked={!!userBookings[flight.id]} 
+          />
+        ))
+      )}
     </div>
   );
 }

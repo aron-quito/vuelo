@@ -9,6 +9,7 @@ export interface Flight {
     rows: number;
     seatsPerRow: number;
   };
+  seats: Seat[];
 }
 
 export interface Seat {
