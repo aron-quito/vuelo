@@ -1,47 +1,49 @@
 "use client"
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { Flight, Seat } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Armchair, ArrowLeft, XCircle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/lib/store";
 
 interface SeatMapProps {
   flight: Flight;
   onSeatSelect: (seat: Seat) => void;
   onGoBack: () => void;
-  setAllFlights: React.Dispatch<React.SetStateAction<Flight[]>>;
 }
 
-export default function SeatMap({ flight, onSeatSelect, onGoBack, setAllFlights }: SeatMapProps) {
+export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps) {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const { updateSeatStatus } = useStore();
+
+  // Deselect seat if user navigates back to this page
+  useEffect(() => {
+    return () => {
+      if (selectedSeatId) {
+        updateSeatStatus(flight.id, selectedSeatId, 'available');
+      }
+    };
+  }, [selectedSeatId, flight.id, updateSeatStatus]);
+
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status === 'taken') return;
 
     const newSelectedSeatId = selectedSeatId === seat.id ? null : seat.id;
+
+    // Deselect old seat if there was one
+    if (selectedSeatId && selectedSeatId !== seat.id) {
+       updateSeatStatus(flight.id, selectedSeatId, 'available');
+    }
     
-    // Update the local seat status for immediate visual feedback
-    setAllFlights(currentFlights =>
-      currentFlights.map(f => {
-        if (f.id === flight.id) {
-          const updatedSeats = f.seats.map(s => {
-            // Deselect old seat
-            if (s.id === selectedSeatId && s.status === 'selected') {
-              return { ...s, status: 'available' };
-            }
-            // Select new seat
-            if (s.id === seat.id) {
-              return { ...s, status: newSelectedSeatId ? 'selected' : 'available' };
-            }
-            return s;
-          });
-          return { ...f, seats: updatedSeats };
-        }
-        return f;
-      })
-    );
+    // Select new seat
+    if (newSelectedSeatId) {
+        updateSeatStatus(flight.id, seat.id, 'selected');
+    } else { // Deselecting the current seat
+        updateSeatStatus(flight.id, seat.id, 'available');
+    }
     
     setSelectedSeatId(newSelectedSeatId);
   };
@@ -105,7 +107,7 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack, setAllFlights 
             <div className="flex items-center gap-2 text-sm"><Armchair size={16} className="text-accent"/> Selected</div>
         </div>
 
-      </CardContent>
+      </CardFooter>
       <CardFooter className="flex justify-end">
         <Button onClick={() => onSeatSelect(finalSelectedSeat!)} disabled={!finalSelectedSeat}>
           Confirm Seat {finalSelectedSeat?.id}

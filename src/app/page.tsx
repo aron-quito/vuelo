@@ -6,21 +6,18 @@ import SeatMap from '@/components/seat-map';
 import BookingSummary from '@/components/booking-summary';
 import Confirmation from '@/components/confirmation';
 import type { Flight, Seat } from '@/lib/types';
-import { generateInitialFlights } from '@/lib/flight-data';
+import { useStore } from '@/lib/store';
 
 type Step = 'flights' | 'seats' | 'summary' | 'confirmed';
 
 export default function Home() {
   const [step, setStep] = useState<Step>('flights');
-  const [allFlights, setAllFlights] = useState<Flight[]>([]);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
-  const [userBookings, setUserBookings] = useState<Record<string, string>>({}); // { flightId: seatId }
-
-  useEffect(() => {
-    // Initialize flights only once on the client
-    setAllFlights(generateInitialFlights());
-  }, []);
+  const [userBookings, setUserBookings] = useState<Record<string, string>>({}); 
+  
+  // Use the global store
+  const { flights, setFlights, updateSeatStatus, revertSeatStatus } = useStore();
 
   const handleFlightSelect = (flight: Flight) => {
     setSelectedFlight(flight);
@@ -34,22 +31,10 @@ export default function Home() {
 
   const handleBookingConfirm = () => {
     if (selectedFlight && selectedSeat) {
-      // Update the global state of the seat to 'taken'
-      const updatedFlights = allFlights.map(flight => {
-        if (flight.id === selectedFlight.id) {
-          const updatedSeats = flight.seats.map(seat => {
-            if (seat.id === selectedSeat.id) {
-              return { ...seat, status: 'taken' as const };
-            }
-            return seat;
-          });
-          return { ...flight, seats: updatedSeats };
-        }
-        return flight;
-      });
-      setAllFlights(updatedFlights);
+      // Update the seat status to 'taken' in the global store
+      updateSeatStatus(selectedFlight.id, selectedSeat.id, 'taken');
 
-      // Track the user's booking
+      // Track the user's booking locally
       setUserBookings(prev => ({ ...prev, [selectedFlight.id]: selectedSeat.id }));
       
       console.log('Booking confirmed for:', { flight: selectedFlight.id, seat: selectedSeat.id });
@@ -63,22 +48,10 @@ export default function Home() {
       setSelectedSeat(null);
       setStep('flights');
     } else if (step === 'summary') {
-      // Revert seat status to 'available' if it was marked as 'selected'
        if (selectedFlight && selectedSeat) {
-        const updatedFlights = allFlights.map(f => {
-            if (f.id === selectedFlight.id) {
-                const updatedSeats = f.seats.map(s => {
-                    if (s.id === selectedSeat.id) {
-                        return {...s, status: 'available' };
-                    }
-                    return s;
-                });
-                return {...f, seats: updatedSeats};
-            }
-            return f;
-        });
-        setAllFlights(updatedFlights);
-      }
+         // Revert seat status to 'available' in the global store
+         revertSeatStatus(selectedFlight.id, selectedSeat.id, 'available');
+       }
       setSelectedSeat(null);
       setStep('seats');
     }
@@ -93,15 +66,17 @@ export default function Home() {
   const renderStep = () => {
     switch(step) {
       case 'flights':
-        return <FlightSelection flights={allFlights} onFlightSelect={handleFlightSelect} userBookings={userBookings} />;
+        return <FlightSelection flights={flights} onFlightSelect={handleFlightSelect} userBookings={userBookings} />;
       case 'seats':
-        return selectedFlight && <SeatMap flight={selectedFlight} onSeatSelect={handleSeatSelect} onGoBack={handleGoBack} setAllFlights={setAllFlights} />;
+        // Find the latest flight details from the store
+        const currentFlight = flights.find(f => f.id === selectedFlight?.id) || null;
+        return currentFlight && <SeatMap flight={currentFlight} onSeatSelect={handleSeatSelect} onGoBack={handleGoBack} />;
       case 'summary':
         return selectedFlight && selectedSeat && <BookingSummary flight={selectedFlight} seat={selectedSeat} onConfirm={handleBookingConfirm} onGoBack={handleGoBack} />;
       case 'confirmed':
         return selectedFlight && selectedSeat && <Confirmation flight={selectedFlight} seat={selectedSeat} onNewBooking={handleNewBooking} />;
       default:
-        return <FlightSelection flights={allFlights} onFlightSelect={handleFlightSelect} userBookings={userBookings} />;
+        return <FlightSelection flights={flights} onFlightSelect={handleFlightSelect} userBookings={userBookings} />;
     }
   }
 
