@@ -16,24 +16,22 @@ interface SeatMapProps {
 
 export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps) {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
-  const { updateSeatStatus } = useStore();
+  const { updateSeatStatus, revertSeatStatus } = useStore();
+  const selectedSeatInStore = flight.seats.find(s => s.status === 'selected');
 
-  // Deselect seat if user navigates back to this page
+  // Sync local selection with the store on mount
   useEffect(() => {
-    return () => {
-      if (selectedSeatId) {
-        updateSeatStatus(flight.id, selectedSeatId, 'available');
-      }
-    };
-  }, [selectedSeatId, flight.id, updateSeatStatus]);
-
+    if (selectedSeatInStore) {
+      setSelectedSeatId(selectedSeatInStore.id);
+    }
+  }, [selectedSeatInStore]);
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status === 'taken') return;
 
     const newSelectedSeatId = selectedSeatId === seat.id ? null : seat.id;
 
-    // Deselect old seat if there was one
+    // Deselect old seat if there was one and it's not the same as the new one
     if (selectedSeatId && selectedSeatId !== seat.id) {
        updateSeatStatus(flight.id, selectedSeatId, 'available');
     }
@@ -47,6 +45,13 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
     
     setSelectedSeatId(newSelectedSeatId);
   };
+  
+  const handleGoBackAndRelease = () => {
+    if (selectedSeatId) {
+      revertSeatStatus(flight.id, selectedSeatId);
+    }
+    onGoBack();
+  }
 
   const seatRows = useMemo(() => {
     const rows = [];
@@ -63,7 +68,7 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
     <Card className="w-full animate-fade-in">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-            <button onClick={onGoBack} className="p-1 rounded-full hover:bg-accent/20 transition-colors">
+            <button onClick={handleGoBackAndRelease} className="p-1 rounded-full hover:bg-accent/20 transition-colors">
                 <ArrowLeft/>
             </button>
             Select Your Seat

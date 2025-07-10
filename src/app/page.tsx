@@ -17,7 +17,7 @@ export default function Home() {
   const [userBookings, setUserBookings] = useState<Record<string, string>>({}); 
   
   // Use the global store
-  const { flights, setFlights, updateSeatStatus, revertSeatStatus } = useStore();
+  const { flights, updateSeatStatus, revertSeatStatus } = useStore();
 
   const handleFlightSelect = (flight: Flight) => {
     setSelectedFlight(flight);
@@ -43,17 +43,13 @@ export default function Home() {
   };
 
   const handleGoBack = () => {
-    if (step === 'seats') {
+    if (step === 'summary') {
+      setSelectedSeat(null);
+      setStep('seats');
+    } else if (step === 'seats') {
       setSelectedFlight(null);
       setSelectedSeat(null);
       setStep('flights');
-    } else if (step === 'summary') {
-       if (selectedFlight && selectedSeat) {
-         // Revert seat status to 'available' in the global store
-         revertSeatStatus(selectedFlight.id, selectedSeat.id, 'available');
-       }
-      setSelectedSeat(null);
-      setStep('seats');
     }
   };
 
