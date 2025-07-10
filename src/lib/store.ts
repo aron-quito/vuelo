@@ -48,6 +48,9 @@ const adaptFlightsData = (data: any): Flight[] => {
   });
 };
 
+// *** CAMBIO CLAVE: Definir la URL del backend usando la variable de entorno ***
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'; // Fallback para desarrollo local
+
 
 export const useStore = create<FlightState>()((set, get) => ({
   flights: [],
@@ -57,8 +60,8 @@ export const useStore = create<FlightState>()((set, get) => ({
   fetchFlights: async () => {
     set({ isLoading: true, error: null });
     try {
-      // *** CAMBIO: Usamos el endpoint correcto para consultar vuelos ***
-      const response = await fetch('/api/vuelos');
+      // *** CAMBIO: Usamos la variable de entorno para la URL del backend ***
+      const response = await fetch(`${BACKEND_URL}/api/vuelos`);
       if (!response.ok) {
         // Intenta leer un mensaje de error del cuerpo si está disponible
         const errorBody = await response.text();
@@ -84,8 +87,8 @@ export const useStore = create<FlightState>()((set, get) => ({
       body.append('asiento', seatId);
       body.append('nombre', passengerName);
 
-      // *** CAMBIO: Usamos el endpoint correcto para reservar asientos ***
-      const response = await fetch(`/api/reservar`, {
+      // *** CAMBIO: Usamos la variable de entorno para la URL del backend ***
+      const response = await fetch(`${BACKEND_URL}/api/reservar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
