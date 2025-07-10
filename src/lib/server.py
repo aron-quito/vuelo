@@ -1,13 +1,16 @@
+import eventlet  # Importar eventlet primero
+eventlet.monkey_patch() # Llamar a monkey_patch() lo antes posible
+
 from flask import Flask, request, jsonify
-from .data import VuelosData
-import os
-
-app = Flask(__name__) # Eliminamos template_folder ya que no usaremos plantillas HTML
-datos = VuelosData()
-
-# Habilitar CORS para permitir peticiones desde el frontend de Next.js
 from flask_cors import CORS
+import os
+from .data import VuelosData # Importación relativa de data
+
+# La creación de la instancia de Flask y VuelosData después del monkey_patch
+app = Flask(__name__)
 CORS(app)
+
+datos = VuelosData()
 
 @app.route("/api/vuelos", methods=["GET"])
 def consultar_vuelos():
@@ -28,12 +31,10 @@ def reservar_asiento():
     - nombre: Nombre del pasajero
     Retorna: JSON indicando el éxito o fracaso de la reserva.
     """
-    # Intentar obtener datos de form-data primero
     vuelo = request.form.get("vuelo")
     asiento = request.form.get("asiento")
     nombre = request.form.get("nombre")
 
-    # Si no están en form-data, intentar obtener de JSON
     if not vuelo or not asiento or not nombre:
         data = request.get_json()
         if data:
@@ -58,11 +59,9 @@ def eliminar_reserva():
     - asiento: ID del asiento
     Retorna: JSON indicando el éxito o fracaso de la eliminación.
     """
-    # Intentar obtener datos de form-data primero
     vuelo = request.form.get("vuelo")
     asiento = request.form.get("asiento")
 
-    # Si no están en form-data, intentar obtener de JSON
     if not vuelo or not asiento:
         data = request.get_json()
         if data:
@@ -73,7 +72,7 @@ def eliminar_reserva():
          return jsonify({"status": "error", "mensaje": "Faltan datos (vuelo, asiento)"}), 400
 
     if datos.cancelar(vuelo, asiento):
-        return jsonify({"status": "ok", "mensaje": f"Reserva para asiento {asiento} en vuelo {vuelo} eliminada"})
+        return jsonify({"status": "ok", "mensaje": f"Reserva para asiento {asiento} en vuelo {vuelo} eliminada"})\
     else:
         return jsonify({"status": "error", "mensaje": f"No se encontró reserva para asiento {asiento} en vuelo {vuelo}"}), 400
 
@@ -86,14 +85,7 @@ def reiniciar_asientos():
     datos.reiniciar_asientos()
     return jsonify({"status": "ok", "mensaje": "Todos los asientos han sido reiniciados"})
 
-# Eliminamos las rutas que renderizaban plantillas HTML:
-# @app.route("/usuario")...
-# @app.route("/admin")...
-# @app.route("/")...
-
-if __name__ == "__main__":
-    # Considera usar un servidor de producción como Gunicorn o Waitress
-    # en lugar del servidor de desarrollo de Flask para despliegue.
-    # app.run(debug=True) # Puedes usar debug=True durante el desarrollo
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+# Eliminamos el bloque __main__ ya que Gunicorn lo maneja
+# if __name__ == "__main__":
+#     port = int(os.environ.get("PORT", 5000))
+#     app.run(host="0.0.0.0", port=port)
