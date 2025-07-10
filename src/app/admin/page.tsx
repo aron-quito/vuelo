@@ -18,11 +18,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminSeatMap = ({ flight }: { flight: Flight }) => {
-  // Obtener funciones y estado necesarios del store
-  // Corregimos la desestructuración aquí
-  const { cancelBooking, isLoading } = useStore(state => ({
-    cancelBooking: state.cancelBooking,
-    isLoading: state.isLoading // Usamos el estado general isLoading del store
+  // Obtenemos solo isLoading aquí, cancelBooking se obtendrá dentro de handleCancelBooking
+  const { isLoading } = useStore(state => ({
+    isLoading: state.isLoading
   }));
   const { toast } = useToast();
 
@@ -37,6 +35,17 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
   const availableSeats = totalSeats - takenSeats;
 
   const handleCancelBooking = async (seatId: string) => {
+      // *** CORRECCIÓN: Obtenemos cancelBooking justo antes de usarla ***
+      const { cancelBooking } = useStore.getState(); // Acceso directo al estado del store fuera de React
+      // O si prefieres dentro del hook:
+      // const { cancelBooking } = useStore(state => ({ cancelBooking: state.cancelBooking }), shallow); // Necesitarías 'shallow' de zustand
+
+      if (!cancelBooking) {
+          console.error("cancelBooking function not available in store.");
+          toast({ variant: "destructive", title: "Error", description: "Cancellation function not available." });
+          return;
+      }
+
       if (window.confirm(`Are you sure you want to cancel the booking for seat ${seatId} on flight ${flight.id}?`)) {
         const success = await cancelBooking(flight.id, seatId);
         if (success) {
@@ -115,9 +124,8 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
 
 
 export default function AdminPage() {
-  // Obtener todas las funciones y estado necesarios del store
-  const { flights, isLoading, fetchFlights, resetAllSeats, error } = useStore(); // Esta línea debería estar bien
-
+  // Obtenemos solo el estado y fetchFlights aquí
+  const { flights, isLoading, fetchFlights, error } = useStore();
   const { toast } = useToast();
 
   // Efecto para mostrar errores del store
@@ -142,6 +150,18 @@ export default function AdminPage() {
   }, [fetchFlights]);
 
   const handleResetAllSeats = async () => {
+      // *** CORRECCIÓN: Obtenemos resetAllSeats justo antes de usarla ***
+      const { resetAllSeats } = useStore.getState(); // Acceso directo al estado del store fuera de React
+      // O si prefieres dentro del hook:
+      // const { resetAllSeats } = useStore(state => ({ resetAllSeats: state.resetAllSeats }), shallow); // Necesitarías 'shallow' de zustand
+
+       if (!resetAllSeats) {
+          console.error("resetAllSeats function not available in store.");
+          toast({ variant: "destructive", title: "Error", description: "Reset function not available." });
+          return;
+      }
+
+
       if (window.confirm("Are you sure you want to reset all seat bookings? This action cannot be undone.")) {
           const success = await resetAllSeats();
            if (success) {
@@ -175,7 +195,6 @@ export default function AdminPage() {
                     Reset All Seats
                 </Button>
                 <Button onClick={() => fetchFlights()} variant="outline" size="icon" disabled={isLoading}>
-                    {/* CORRECCIÓN: Eliminado el carácter de escape \ */}
                     <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                 </Button>
                 <Button asChild>
@@ -207,4 +226,3 @@ export default function AdminPage() {
     </main>
   );
 }
-
