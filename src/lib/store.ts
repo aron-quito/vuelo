@@ -10,50 +10,88 @@ interface FlightState {
   bookSeat: (flightId: string, seatId: string, passengerName: string) => Promise<boolean>;
 }
 
-// The store now manages client-side state like loading/error and caches data from the backend.
-// It is no longer the single source of truth, but a client-side interface to the backend API.
-export const useStore = create<FlightState>()((set) => ({
+// Adapta la estructura de datos del backend a la que espera el frontend.
+const adaptFlightsData = (data: any): Flight[] => {
+  return Object.entries(data).map(([flightId, flightData]: [string, any]) => {
+    const seats = Object.entries(flightData.asientos).map(([seatId, passengerName]) => ({
+      id: seatId,
+      status: passengerName ? 'taken' : 'available',
+      passengerName: passengerName as string | undefined,
+    }));
+    
+    // Asumimos algunos datos estáticos que no vienen del backend,
+    // puedes expandir tu backend para que también los proporcione.
+    const details = staticFlightDetails[flightId] || {};
+
+    return {
+      id: flightId,
+      from: details.from || 'Unknown Origin',
+      to: details.to || 'Unknown Destination',
+      departureTime: details.departureTime || new Date().toISOString(),
+      arrivalTime: details.arrivalTime || new Date().toISOString(),
+      price: details.price || 0,
+      plane: {
+          rows: details.plane?.rows || 1,
+          seatsPerRow: details.plane?.seatsPerRow || 6,
+      },
+      seats,
+    };
+  });
+};
+
+// Datos estáticos para enriquecer la respuesta del backend
+const staticFlightDetails: { [key: string]: Partial<Flight> } = {
+    "vuelo_123": { from: 'New York (JFK)', to: 'London (LHR)', departureTime: '2024-10-28 08:00', arrivalTime: '2024-10-28 20:00', price: 750, plane: { rows: 2, seatsPerRow: 3 } },
+    // Añade más detalles si tu backend tiene más vuelos
+};
+
+
+export const useStore = create<FlightState>()((set, get) => ({
   flights: [],
   isLoading: true,
   error: null,
   
-  // Fetches all flight data from the backend
   fetchFlights: async () => {
     set({ isLoading: true, error: null });
     try {
-      // In a real deployment, this URL would be your Render backend URL
-      const response = await fetch('/api/flights'); 
+      // Usamos el endpoint /consultar que definiste en server.py
+      const response = await fetch('/api/consultar');
       if (!response.ok) {
-        throw new Error('Failed to fetch flights');
+        throw new Error('Failed to fetch flights from backend');
       }
-      const flights: Flight[] = await response.json();
-      set({ flights, isLoading: false });
+      const data = await response.json();
+      const adaptedFlights = adaptFlightsData(data);
+      set({ flights: adaptedFlights, isLoading: false });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       set({ isLoading: false, error: errorMessage });
     }
   },
   
-  // Sends a booking request to the backend
   bookSeat: async (flightId, seatId, passengerName) => {
     try {
-      // In a real deployment, this URL would be your Render backend URL
-      const response = await fetch(`/api/book`, {
+      // Tu backend espera datos de formulario, así que usamos URLSearchParams
+      const body = new URLSearchParams();
+      body.append('vuelo', flightId);
+      body.append('asiento', seatId);
+      body.append('nombre', passengerName);
+
+      // Usamos el endpoint /reservar que definiste en server.py
+      const response = await fetch(`/api/reservar`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({ flightId, seatId, passengerName }),
+        body: body.toString(),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Booking failed');
+         const errorText = await response.text();
+        throw new Error(errorText || 'Booking failed');
       }
       
-      // After a successful booking, refresh the flight data to show the change
-      const fetchFlights = useStore.getState().fetchFlights;
-      await fetchFlights();
+      // Después de una reserva exitosa, actualizamos los datos
+      await get().fetchFlights();
       return true;
 
     } catch (error) {
@@ -64,3 +102,4 @@ export const useStore = create<FlightState>()((set) => ({
     }
   },
 }));
+
