@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import type { Flight } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Armchair, User, XCircle } from 'lucide-react';
+import { Armchair, User, XCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -13,7 +14,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AdminSeatMap = ({ flight }: { flight: Flight }) => {
   const seatRows = [];
@@ -78,12 +80,18 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
 };
 
 export default function AdminPage() {
-  const { flights } = useStore();
-  const [isClient, setIsClient] = useState(false);
+  const { flights, isLoading, fetchFlights } = useStore();
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    fetchFlights();
+    // For a true real-time experience, you would use WebSockets here.
+    // For now, we'll add a manual refresh and an interval poll as a simulation.
+    const interval = setInterval(() => {
+      fetchFlights();
+    }, 5000); // Refresh every 5 seconds
+
+    return () => clearInterval(interval); // Cleanup on component unmount
+  }, [fetchFlights]);
 
   return (
     <main className="min-h-screen bg-background flex flex-col items-center p-4 md:p-8">
@@ -91,11 +99,16 @@ export default function AdminPage() {
         <div className="flex justify-between items-center">
             <div>
                 <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary">Admin Dashboard</h1>
-                <p className="text-muted-foreground mt-2 text-lg">Real-time booking overview</p>
+                <p className="text-muted-foreground mt-2 text-lg">Seat status is refreshed automatically</p>
             </div>
-            <Button asChild>
-                <Link href="/">Go to Booking Page</Link>
-            </Button>
+            <div className="flex items-center gap-4">
+                <Button onClick={() => fetchFlights()} variant="outline" size="icon" disabled={isLoading}>
+                    <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                </Button>
+                <Button asChild>
+                    <Link href="/">Go to Booking Page</Link>
+                </Button>
+            </div>
         </div>
         <div className="flex flex-wrap gap-4 mt-6 justify-start">
             <div className="flex items-center gap-2 text-sm"><Armchair size={16} className="text-primary/80"/> Available</div>
@@ -105,14 +118,17 @@ export default function AdminPage() {
       </header>
       
       <div className="w-full max-w-6xl space-y-6">
-        {isClient ? (
+        {isLoading && flights.length === 0 ? (
+           <div className="space-y-4">
+             <Skeleton className="h-48 w-full" />
+             <Skeleton className="h-48 w-full" />
+           </div>
+        ) : (
           flights.length > 0 ? (
             flights.map(flight => <AdminSeatMap key={flight.id} flight={flight} />)
           ) : (
-            <p>Loading flights...</p>
+            <p className="text-center text-muted-foreground">No flights found.</p>
           )
-        ) : (
-          <p>Loading dashboard...</p>
         )}
       </div>
     </main>

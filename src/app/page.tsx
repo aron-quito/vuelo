@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -8,6 +9,7 @@ import Confirmation from '@/components/confirmation';
 import type { Flight, Seat } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 type Step = 'flights' | 'seats' | 'summary' | 'confirmed';
 
@@ -15,17 +17,24 @@ export default function Home() {
   const [step, setStep] = useState<Step>('flights');
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
-  
-  // Use the store hooks to get data and actions
-  const flights = useStore((state) => state.flights);
-  const updateSeatStatus = useStore((state) => state.updateSeatStatus);
-  const revertSeatStatus = useStore((state) => state.revertSeatStatus);
+  const [confirmedBookingDetails, setConfirmedBookingDetails] = useState<{ flight: Flight, seat: Seat } | null>(null);
 
-  const [isClient, setIsClient] = useState(false);
+  const { flights, isLoading, error, fetchFlights, bookSeat } = useStore();
+  const { toast } = useToast();
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    fetchFlights();
+  }, [fetchFlights]);
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "An error occurred",
+        description: error,
+      });
+    }
+  }, [error, toast]);
 
   const handleFlightSelect = (flight: Flight) => {
     setSelectedFlight(flight);
@@ -37,26 +46,22 @@ export default function Home() {
     setStep('summary');
   };
 
-  const handleBookingConfirm = (passengerName: string) => {
+  const handleBookingConfirm = async (passengerName: string) => {
     if (selectedFlight && selectedSeat) {
-      updateSeatStatus(selectedFlight.id, selectedSeat.id, 'taken', passengerName);
-      // We need to find the latest state of the seat for the confirmation page
-      const updatedFlight = useStore.getState().flights.find(f => f.id === selectedFlight.id);
-      const confirmedSeat = updatedFlight?.seats.find(s => s.id === selectedSeat.id);
-      setSelectedSeat(confirmedSeat || null);
-      setStep('confirmed');
+      const success = await bookSeat(selectedFlight.id, selectedSeat.id, passengerName);
+      if (success) {
+        // Prepare details for the confirmation screen
+        setConfirmedBookingDetails({ 
+          flight: selectedFlight, 
+          seat: { ...selectedSeat, passengerName }
+        });
+        setStep('confirmed');
+      }
     }
   };
 
   const handleGoBack = () => {
     if (step === 'summary') {
-      if (selectedFlight && selectedSeat) {
-        // Revert status only if it was 'selected'
-        const currentSeatState = flights.find(f=>f.id === selectedFlight.id)?.seats.find(s=>s.id === selectedSeat.id);
-        if(currentSeatState?.status === 'selected') {
-          revertSeatStatus(selectedFlight.id, selectedSeat.id);
-        }
-      }
       setSelectedSeat(null);
       setStep('seats');
     } else if (step === 'seats') {
@@ -69,11 +74,13 @@ export default function Home() {
   const handleNewBooking = () => {
     setSelectedFlight(null);
     setSelectedSeat(null);
+    setConfirmedBookingDetails(null);
     setStep('flights');
+    fetchFlights(); // Refresh flights for new booking
   }
 
   const renderStep = () => {
-    if (!isClient) {
+    if (isLoading && flights.length === 0) {
       return (
         <div className="space-y-6">
           <Skeleton className="h-10 w-1/3 mx-auto" />
@@ -94,7 +101,7 @@ export default function Home() {
       case 'summary':
         return selectedFlight && selectedSeat && <BookingSummary flight={selectedFlight} seat={selectedSeat} onConfirm={handleBookingConfirm} onGoBack={handleGoBack} />;
       case 'confirmed':
-        return selectedFlight && selectedSeat && <Confirmation flight={selectedFlight} seat={selectedSeat} onNewBooking={handleNewBooking} />;
+        return confirmedBookingDetails && <Confirmation flight={confirmedBookingDetails.flight} seat={confirmedBookingDetails.seat} onNewBooking={handleNewBooking} />;
       default:
         return <FlightSelection flights={flights} onFlightSelect={handleFlightSelect} />;
     }

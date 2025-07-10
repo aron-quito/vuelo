@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react";
@@ -14,6 +15,8 @@ interface FlightCardProps {
 const FlightCard = ({ flight, onFlightSelect }: FlightCardProps) => {
   const [departure, setDeparture] = useState('');
   const [arrival, setArrival] = useState('');
+  
+  // A flight is full if all seats are taken
   const allSeatsTaken = flight.seats.every(s => s.status === 'taken');
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export default function FlightSelection({ flights, onFlightSelect }: FlightSelec
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-3xl font-bold text-center text-primary/80">Select Your Flight</h2>
       {flights.length === 0 ? (
-        <p className="text-center text-muted-foreground">Loading flights...</p>
+        <p className="text-center text-muted-foreground">No available flights at the moment.</p>
       ) : (
         flights.map((flight) => (
           <FlightCard 

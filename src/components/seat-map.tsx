@@ -1,12 +1,12 @@
+
 "use client"
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import type { Flight, Seat } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Armchair, ArrowLeft, XCircle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useStore } from "@/lib/store";
 
 interface SeatMapProps {
   flight: Flight;
@@ -16,18 +16,10 @@ interface SeatMapProps {
 
 export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps) {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
-  const { updateSeatStatus } = useStore();
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status === 'taken') return;
-
-    const newSelectedSeatId = selectedSeatId === seat.id ? null : seat.id;
-    
-    // Update store to reflect selection. The store logic handles deselecting the old one.
-    updateSeatStatus(flight.id, seat.id, newSelectedSeatId ? 'selected' : 'available');
-
-    // Update local state to track which seat is selected for this component instance
-    setSelectedSeatId(newSelectedSeatId);
+    setSelectedSeatId(seat.id === selectedSeatId ? null : seat.id);
   };
   
   const handleConfirm = () => {
@@ -69,14 +61,14 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
                         <React.Fragment key={seat.id}>
                           {seatIndex === aisleIndex && <div className="w-8" aria-hidden="true"></div>}
                           <button
-                            aria-label={`Seat ${seat.id}, status: ${seat.status === 'selected' ? 'selected' : seat.status}`}
+                            aria-label={`Seat ${seat.id}, status: ${seat.status}`}
                             onClick={() => handleSeatClick(seat)}
                             disabled={seat.status === 'taken'}
                             className={cn(
                                 "w-9 h-9 rounded-md flex items-center justify-center transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                                 seat.status === 'available' && "bg-primary/20 text-primary hover:bg-primary/40",
                                 seat.status === 'taken' && "bg-muted text-muted-foreground cursor-not-allowed",
-                                (seat.status === 'selected' || selectedSeatId === seat.id) && "bg-accent text-accent-foreground scale-110 ring-2 ring-accent ring-offset-background",
+                                selectedSeatId === seat.id && "bg-accent text-accent-foreground scale-110 ring-2 ring-accent ring-offset-background",
                             )}
                           >
                             <Armchair size={20} />

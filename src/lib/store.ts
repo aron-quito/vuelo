@@ -1,83 +1,66 @@
+
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { generateInitialFlights } from './flight-data';
 import type { Flight, Seat } from './types';
 
 interface FlightState {
   flights: Flight[];
-  // "Read" operation
-  getFlights: () => Flight[];
-  // "Write" operations
-  updateSeatStatus: (flightId: string, seatId: string, newStatus: Seat['status'], passengerName?: string) => void;
-  revertSeatStatus: (flightId: string, seatId: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  fetchFlights: () => Promise<void>;
+  bookSeat: (flightId: string, seatId: string, passengerName: string) => Promise<boolean>;
 }
 
-const initialFlights = generateInitialFlights();
-
-// This store now acts as our "single source of truth", similar to the VuelosData class.
-// The functions inside are analogous to the methods that acquire locks.
-export const useStore = create<FlightState>()(
-  persist(
-    (set, get) => ({
-      flights: initialFlights,
-      
-      // A "read" operation. In a real backend, this would be a reader function.
-      getFlights: () => {
-        return get().flights;
-      },
-      
-      // A "write" operation. In a real backend, this would be a writer function.
-      updateSeatStatus: (flightId, seatId, newStatus, passengerName) => {
-        set((state) => {
-          const newFlights = state.flights.map((flight) => {
-            if (flight.id === flightId) {
-              const updatedSeats = flight.seats.map((seat) => {
-                // When selecting a new seat, deselect any previously selected one in this session
-                if (newStatus === 'selected' && seat.status === 'selected') {
-                  return { ...seat, status: 'available' };
-                }
-                if (seat.id === seatId) {
-                  const updatedSeat = { ...seat, status: newStatus };
-                  if (newStatus === 'taken' && passengerName) {
-                    updatedSeat.passengerName = passengerName;
-                  }
-                  if (newStatus === 'available') {
-                    delete updatedSeat.passengerName;
-                  }
-                  return updatedSeat;
-                }
-                return seat;
-              });
-              return { ...flight, seats: updatedSeats };
-            }
-            return flight;
-          });
-          return { flights: newFlights };
-        });
-      },
-      
-      // A "write" operation to revert a temporary selection.
-      revertSeatStatus: (flightId, seatId) => {
-        set((state) => ({
-            flights: state.flights.map(f => {
-                if (f.id === flightId) {
-                    const updatedSeats = f.seats.map(s => {
-                        if (s.id === seatId && s.status === 'selected') {
-                             return {...s, status: 'available' };
-                        }
-                        return s;
-                    });
-                    return {...f, seats: updatedSeats};
-                }
-                return f;
-            })
-        }))
+// The store now manages client-side state like loading/error and caches data from the backend.
+// It is no longer the single source of truth, but a client-side interface to the backend API.
+export const useStore = create<FlightState>()((set) => ({
+  flights: [],
+  isLoading: true,
+  error: null,
+  
+  // Fetches all flight data from the backend
+  fetchFlights: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      // In a real deployment, this URL would be your Render backend URL
+      const response = await fetch('/api/flights'); 
+      if (!response.ok) {
+        throw new Error('Failed to fetch flights');
       }
-    }),
-    {
-      name: 'flight-booking-storage',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ flights: state.flights }),
+      const flights: Flight[] = await response.json();
+      set({ flights, isLoading: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      set({ isLoading: false, error: errorMessage });
     }
-  )
-);
+  },
+  
+  // Sends a booking request to the backend
+  bookSeat: async (flightId, seatId, passengerName) => {
+    try {
+      // In a real deployment, this URL would be your Render backend URL
+      const response = await fetch(`/api/book`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ flightId, seatId, passengerName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Booking failed');
+      }
+      
+      // After a successful booking, refresh the flight data to show the change
+      const fetchFlights = useStore.getState().fetchFlights;
+      await fetchFlights();
+      return true;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error("Booking error:", errorMessage);
+      set({ error: errorMessage });
+      return false;
+    }
+  },
+}));
