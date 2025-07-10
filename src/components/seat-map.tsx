@@ -107,7 +107,7 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
             <div className="flex items-center gap-2 text-sm"><Armchair size={16} className="text-accent"/> Selected</div>
         </div>
 
-      </CardFooter>
+      </CardContent>
       <CardFooter className="flex justify-end">
         <Button onClick={() => onSeatSelect(finalSelectedSeat!)} disabled={!finalSelectedSeat}>
           Confirm Seat {finalSelectedSeat?.id}
