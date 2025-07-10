@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from data import VuelosData
+from .data import VuelosData
 import os
 
 app = Flask(__name__) # Eliminamos template_folder ya que no usaremos plantillas HTML
