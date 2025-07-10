@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import type { Flight, Seat } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
