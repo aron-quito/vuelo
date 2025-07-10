@@ -16,7 +16,11 @@ export default function Home() {
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
   
-  const { flights, updateSeatStatus, revertSeatStatus } = useStore();
+  // Use the store hooks to get data and actions
+  const flights = useStore((state) => state.flights);
+  const updateSeatStatus = useStore((state) => state.updateSeatStatus);
+  const revertSeatStatus = useStore((state) => state.revertSeatStatus);
+
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -37,7 +41,7 @@ export default function Home() {
     if (selectedFlight && selectedSeat) {
       updateSeatStatus(selectedFlight.id, selectedSeat.id, 'taken', passengerName);
       // We need to find the latest state of the seat for the confirmation page
-      const updatedFlight = flights.find(f => f.id === selectedFlight.id);
+      const updatedFlight = useStore.getState().flights.find(f => f.id === selectedFlight.id);
       const confirmedSeat = updatedFlight?.seats.find(s => s.id === selectedSeat.id);
       setSelectedSeat(confirmedSeat || null);
       setStep('confirmed');
@@ -47,7 +51,7 @@ export default function Home() {
   const handleGoBack = () => {
     if (step === 'summary') {
       if (selectedFlight && selectedSeat) {
-        // Revert status only if it was 'selected', not if it was already 'taken'
+        // Revert status only if it was 'selected'
         const currentSeatState = flights.find(f=>f.id === selectedFlight.id)?.seats.find(s=>s.id === selectedSeat.id);
         if(currentSeatState?.status === 'selected') {
           revertSeatStatus(selectedFlight.id, selectedSeat.id);
