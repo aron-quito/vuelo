@@ -9,20 +9,23 @@ import { PlaneTakeoff, Clock, Landmark, DollarSign } from "lucide-react";
 interface FlightCardProps {
   flight: Flight;
   onFlightSelect: (flight: Flight) => void;
-  isBooked: boolean;
 }
 
-const FlightCard = ({ flight, onFlightSelect, isBooked }: FlightCardProps) => {
+const FlightCard = ({ flight, onFlightSelect }: FlightCardProps) => {
   const [departure, setDeparture] = useState('');
   const [arrival, setArrival] = useState('');
+  const allSeatsTaken = flight.seats.every(s => s.status === 'taken');
 
   useEffect(() => {
-    setDeparture(new Date(flight.departureTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
-    setArrival(new Date(flight.arrivalTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
+    // This check is to prevent errors during server-side rendering
+    if (typeof window !== 'undefined') {
+      setDeparture(new Date(flight.departureTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
+      setArrival(new Date(flight.arrivalTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
+    }
   }, [flight.departureTime, flight.arrivalTime]);
 
   return (
-    <Card className={`transition-all ${isBooked ? 'opacity-50' : 'hover:shadow-lg hover:shadow-primary/20'}`}>
+    <Card className={`transition-all ${allSeatsTaken ? 'opacity-50' : 'hover:shadow-lg hover:shadow-primary/20'}`}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center justify-between gap-4">
           <span className="flex items-center gap-2">
@@ -66,8 +69,8 @@ const FlightCard = ({ flight, onFlightSelect, isBooked }: FlightCardProps) => {
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={() => onFlightSelect(flight)} className="w-full" disabled={isBooked}>
-          {isBooked ? 'Already Booked' : 'Select Seats'}
+        <Button onClick={() => onFlightSelect(flight)} className="w-full" disabled={allSeatsTaken}>
+          {allSeatsTaken ? 'Flight Full' : 'Select Seats'}
         </Button>
       </CardFooter>
     </Card>
@@ -77,10 +80,9 @@ const FlightCard = ({ flight, onFlightSelect, isBooked }: FlightCardProps) => {
 interface FlightSelectionProps {
   flights: Flight[];
   onFlightSelect: (flight: Flight) => void;
-  userBookings: Record<string, string>;
 }
 
-export default function FlightSelection({ flights, onFlightSelect, userBookings }: FlightSelectionProps) {
+export default function FlightSelection({ flights, onFlightSelect }: FlightSelectionProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-3xl font-bold text-center text-primary/80">Select Your Flight</h2>
@@ -92,7 +94,6 @@ export default function FlightSelection({ flights, onFlightSelect, userBookings 
             key={flight.id} 
             flight={flight} 
             onFlightSelect={onFlightSelect}
-            isBooked={!!userBookings[flight.id]} 
           />
         ))
       )}

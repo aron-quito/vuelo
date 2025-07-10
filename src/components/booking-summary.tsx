@@ -1,18 +1,29 @@
 "use client"
 
+import { useState } from "react";
 import type { Flight, Seat } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, Calendar, Clock, Armchair, ArrowLeft, DollarSign } from "lucide-react";
+import { Plane, Calendar, Clock, Armchair, ArrowLeft, DollarSign, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface BookingSummaryProps {
   flight: Flight;
   seat: Seat;
-  onConfirm: () => void;
+  onConfirm: (passengerName: string) => void;
   onGoBack: () => void;
 }
 
 export default function BookingSummary({ flight, seat, onConfirm, onGoBack }: BookingSummaryProps) {
+  const [passengerName, setPassengerName] = useState("");
+
+  const handleConfirm = () => {
+    if (passengerName.trim()) {
+      onConfirm(passengerName.trim());
+    }
+  }
+
   return (
     <Card className="w-full animate-fade-in">
         <CardHeader>
@@ -42,9 +53,21 @@ export default function BookingSummary({ flight, seat, onConfirm, onGoBack }: Bo
                     <div className="flex items-center gap-2 text-lg text-primary font-bold"><DollarSign size={20}/> {flight.price}</div>
                  </div>
             </div>
+            <div className="p-4 border rounded-lg bg-card/50">
+                <h3 className="font-bold text-lg mb-2 flex items-center gap-2"><User size={20}/> Passenger Name</h3>
+                <div className="grid gap-2">
+                    <Label htmlFor="passengerName" className="sr-only">Passenger Name</Label>
+                    <Input 
+                        id="passengerName" 
+                        placeholder="Enter full name for the booking" 
+                        value={passengerName}
+                        onChange={(e) => setPassengerName(e.target.value)}
+                    />
+                </div>
+            </div>
         </CardContent>
         <CardFooter>
-            <Button onClick={onConfirm} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg py-6">
+            <Button onClick={handleConfirm} disabled={!passengerName.trim()} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg py-6">
                 Confirm and Book
             </Button>
         </CardFooter>

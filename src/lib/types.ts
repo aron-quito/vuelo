@@ -15,4 +15,5 @@ export interface Flight {
 export interface Seat {
   id: string; // e.g., "1A"
   status: 'available' | 'taken' | 'selected';
+  passengerName?: string;
 }

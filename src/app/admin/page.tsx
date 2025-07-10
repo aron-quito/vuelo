@@ -4,10 +4,16 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import type { Flight } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Armchair, CheckCircle, XCircle } from 'lucide-react';
+import { Armchair, User, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const AdminSeatMap = ({ flight }: { flight: Flight }) => {
   const seatRows = [];
@@ -29,6 +35,7 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
         </div>
       </CardHeader>
       <CardContent>
+      <TooltipProvider>
         <div className="p-2 bg-muted/50 rounded-lg w-full overflow-x-auto">
           <div className="flex flex-col gap-2 min-w-max">
             {seatRows.map((row, rowIndex) => (
@@ -38,16 +45,25 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
                   {row.map((seat, seatIndex) => (
                     <div key={seat.id} className="flex">
                       {seatIndex === aisleIndex && <div className="w-6" aria-hidden="true"></div>}
-                      <div
-                        aria-label={`Seat ${seat.id}, status: ${seat.status}`}
-                        className={cn(
-                          "w-7 h-7 rounded-md flex items-center justify-center",
-                          seat.status === 'available' && "bg-primary/20 text-primary",
-                          seat.status === 'taken' && "bg-muted text-muted-foreground",
+                       <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            aria-label={`Seat ${seat.id}, status: ${seat.status}`}
+                            className={cn(
+                              "w-7 h-7 rounded-md flex items-center justify-center",
+                              seat.status === 'available' && "bg-primary/20 text-primary",
+                              seat.status === 'taken' && "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            <Armchair size={16} />
+                          </div>
+                        </TooltipTrigger>
+                        {seat.status === 'taken' && seat.passengerName && (
+                          <TooltipContent>
+                            <p>Booked by: {seat.passengerName}</p>
+                          </TooltipContent>
                         )}
-                      >
-                        <Armchair size={16} />
-                      </div>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>
@@ -55,6 +71,7 @@ const AdminSeatMap = ({ flight }: { flight: Flight }) => {
             ))}
           </div>
         </div>
+      </TooltipProvider>
       </CardContent>
     </Card>
   );
@@ -81,8 +98,9 @@ export default function AdminPage() {
             </Button>
         </div>
         <div className="flex flex-wrap gap-4 mt-6 justify-start">
-            <div className="flex items-center gap-2 text-sm"><CheckCircle size={16} className="text-primary/80"/> Available</div>
+            <div className="flex items-center gap-2 text-sm"><Armchair size={16} className="text-primary/80"/> Available</div>
             <div className="flex items-center gap-2 text-sm"><XCircle size={16} className="text-muted-foreground"/> Taken</div>
+            <div className="flex items-center gap-2 text-sm"><User size={16} className="text-muted-foreground"/> Hover for passenger</div>
         </div>
       </header>
       

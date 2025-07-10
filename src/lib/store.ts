@@ -5,7 +5,7 @@ import type { Flight, Seat } from './types';
 interface FlightState {
   flights: Flight[];
   setFlights: (flights: Flight[]) => void;
-  updateSeatStatus: (flightId: string, seatId: string, newStatus: Seat['status']) => void;
+  updateSeatStatus: (flightId: string, seatId: string, newStatus: Seat['status'], passengerName?: string) => void;
   revertSeatStatus: (flightId: string, seatId: string) => void;
 }
 
@@ -15,15 +15,21 @@ export const useStore = create<FlightState>((set, get) => ({
   flights: initialFlights,
   setFlights: (flights) => set({ flights }),
   
-  updateSeatStatus: (flightId, seatId, newStatus) => {
+  updateSeatStatus: (flightId, seatId, newStatus, passengerName) => {
     set((state) => ({
       flights: state.flights.map((flight) => {
         if (flight.id === flightId) {
           const updatedSeats = flight.seats.map((seat) => {
             if (seat.id === seatId) {
-              return { ...seat, status: newStatus };
+              const updatedSeat = { ...seat, status: newStatus };
+              if (newStatus === 'taken' && passengerName) {
+                updatedSeat.passengerName = passengerName;
+              }
+              if (newStatus === 'available') {
+                delete updatedSeat.passengerName;
+              }
+              return updatedSeat;
             }
-            // if we are selecting a new seat, deselect any previously selected one
             if (newStatus === 'selected' && seat.status === 'selected') {
               return { ...seat, status: 'available' };
             }
