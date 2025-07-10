@@ -37,13 +37,16 @@ export default function Home() {
       // Track the user's booking locally
       setUserBookings(prev => ({ ...prev, [selectedFlight.id]: selectedSeat.id }));
       
-      console.log('Booking confirmed for:', { flight: selectedFlight.id, seat: selectedSeat.id });
       setStep('confirmed');
     }
   };
 
   const handleGoBack = () => {
     if (step === 'summary') {
+      // Revert the seat status if the user goes back from summary
+      if (selectedFlight && selectedSeat) {
+        revertSeatStatus(selectedFlight.id, selectedSeat.id);
+      }
       setSelectedSeat(null);
       setStep('seats');
     } else if (step === 'seats') {

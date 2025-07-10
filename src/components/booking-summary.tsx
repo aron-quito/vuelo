@@ -36,7 +36,7 @@ export default function BookingSummary({ flight, seat, onConfirm, onGoBack }: Bo
                 <div className="mt-2 text-sm"><strong>Route:</strong> {flight.from} to {flight.to}</div>
             </div>
             <div className="p-4 border rounded-lg bg-card/50">
-                <h3 className="font-bold text-lg mb-2">Seat &amp; Price</h3>
+                <h3 className="font-bold text-lg mb-2">Seat & Price</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-2 text-lg"><Armchair size={20} className="text-primary"/> <strong>Seat: {seat.id}</strong></div>
                     <div className="flex items-center gap-2 text-lg text-primary font-bold"><DollarSign size={20}/> {flight.price}</div>

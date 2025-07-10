@@ -16,42 +16,26 @@ interface SeatMapProps {
 
 export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps) {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
-  const { updateSeatStatus, revertSeatStatus } = useStore();
-  const selectedSeatInStore = flight.seats.find(s => s.status === 'selected');
-
-  // Sync local selection with the store on mount
-  useEffect(() => {
-    if (selectedSeatInStore) {
-      setSelectedSeatId(selectedSeatInStore.id);
-    }
-  }, [selectedSeatInStore]);
+  const { updateSeatStatus } = useStore();
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status === 'taken') return;
 
     const newSelectedSeatId = selectedSeatId === seat.id ? null : seat.id;
+    
+    // Update store to reflect selection. The store logic handles deselecting the old one.
+    updateSeatStatus(flight.id, seat.id, newSelectedSeatId ? 'selected' : 'available');
 
-    // Deselect old seat if there was one and it's not the same as the new one
-    if (selectedSeatId && selectedSeatId !== seat.id) {
-       updateSeatStatus(flight.id, selectedSeatId, 'available');
-    }
-    
-    // Select new seat
-    if (newSelectedSeatId) {
-        updateSeatStatus(flight.id, seat.id, 'selected');
-    } else { // Deselecting the current seat
-        updateSeatStatus(flight.id, seat.id, 'available');
-    }
-    
+    // Update local state to track which seat is selected for this component instance
     setSelectedSeatId(newSelectedSeatId);
   };
   
-  const handleGoBackAndRelease = () => {
-    if (selectedSeatId) {
-      revertSeatStatus(flight.id, selectedSeatId);
+  const handleConfirm = () => {
+    const finalSelectedSeat = flight.seats.find(s => s.id === selectedSeatId);
+    if (finalSelectedSeat) {
+      onSeatSelect(finalSelectedSeat);
     }
-    onGoBack();
-  }
+  };
 
   const seatRows = useMemo(() => {
     const rows = [];
@@ -62,13 +46,12 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
   }, [flight.seats, flight.plane.seatsPerRow]);
 
   const aisleIndex = Math.ceil(flight.plane.seatsPerRow / 2);
-  const finalSelectedSeat = flight.seats.find(s => s.id === selectedSeatId);
 
   return (
     <Card className="w-full animate-fade-in">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-            <button onClick={handleGoBackAndRelease} className="p-1 rounded-full hover:bg-accent/20 transition-colors">
+            <button onClick={onGoBack} className="p-1 rounded-full hover:bg-accent/20 transition-colors">
                 <ArrowLeft/>
             </button>
             Select Your Seat
@@ -86,14 +69,14 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
                         <React.Fragment key={seat.id}>
                           {seatIndex === aisleIndex && <div className="w-8" aria-hidden="true"></div>}
                           <button
-                            aria-label={`Seat ${seat.id}, status: ${seat.status}`}
+                            aria-label={`Seat ${seat.id}, status: ${seat.status === 'selected' ? 'selected' : seat.status}`}
                             onClick={() => handleSeatClick(seat)}
                             disabled={seat.status === 'taken'}
                             className={cn(
                                 "w-9 h-9 rounded-md flex items-center justify-center transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                                 seat.status === 'available' && "bg-primary/20 text-primary hover:bg-primary/40",
                                 seat.status === 'taken' && "bg-muted text-muted-foreground cursor-not-allowed",
-                                seat.status === 'selected' && "bg-accent text-accent-foreground scale-110 ring-2 ring-accent ring-offset-background",
+                                (seat.status === 'selected' || selectedSeatId === seat.id) && "bg-accent text-accent-foreground scale-110 ring-2 ring-accent ring-offset-background",
                             )}
                           >
                             <Armchair size={20} />
@@ -114,8 +97,8 @@ export default function SeatMap({ flight, onSeatSelect, onGoBack }: SeatMapProps
 
       </CardContent>
       <CardFooter className="flex justify-end">
-        <Button onClick={() => onSeatSelect(finalSelectedSeat!)} disabled={!finalSelectedSeat}>
-          Confirm Seat {finalSelectedSeat?.id}
+        <Button onClick={handleConfirm} disabled={!selectedSeatId}>
+          Confirm Seat {selectedSeatId}
         </Button>
       </CardFooter>
     </Card>
