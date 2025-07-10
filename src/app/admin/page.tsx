@@ -12,7 +12,7 @@ import Link from 'next/link';
 const AdminSeatMap = ({ flight }: { flight: Flight }) => {
   const seatRows = [];
   for (let i = 0; i < flight.seats.length; i += flight.plane.seatsPerRow) {
-    rows.push(flight.seats.slice(i, i + flight.plane.seatsPerRow));
+    seatRows.push(flight.seats.slice(i, i + flight.plane.seatsPerRow));
   }
   const aisleIndex = Math.ceil(flight.plane.seatsPerRow / 2);
 
